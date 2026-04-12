@@ -1,0 +1,33 @@
+*{box-sizing:border-box}
+:root{--bg:#f6f7fb;--card:#fff;--text:#1f2937;--muted:#6b7280;--border:#e5e7eb;--accent:#111827;--accent2:#374151;--shadow:0 10px 30px rgba(15,23,42,.08);--radius:20px}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif}
+body{padding:24px}
+.container{max-width:1150px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+.hero{display:grid;grid-template-columns:1.7fr .8fr;gap:20px;padding:28px;margin-bottom:18px}
+.eyebrow{margin:0 0 10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-size:12px;font-weight:700}
+h1{margin:0 0 10px;font-size:40px;line-height:1.05}
+h2{margin-top:0;margin-bottom:12px;font-size:22px}
+.subtext,.note,.summary-content,ol{color:var(--muted);font-size:15px;line-height:1.6}
+.hero-actions{display:flex;flex-direction:column;justify-content:center;gap:10px}
+.hero-actions label{font-weight:700}
+.hero-actions input{height:52px;border:1px solid var(--border);border-radius:14px;padding:0 14px;font-size:20px}
+.controls{padding:18px 20px;margin-bottom:18px}
+.button-row{display:flex;flex-wrap:wrap;gap:12px}
+button{border:none;border-radius:14px;background:var(--accent);color:#fff;padding:12px 18px;font-size:14px;font-weight:700;cursor:pointer}
+button.secondary{background:var(--accent2)}
+button:hover{opacity:.94}
+.table-card{padding:12px;margin-bottom:18px}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:880px}
+th,td{border-bottom:1px solid var(--border);padding:14px 12px;text-align:left;vertical-align:middle}
+thead th{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+tfoot td{font-weight:700}
+input[type=text],input[type=number],input[type=date]{width:100%;border:1px solid var(--border);border-radius:12px;height:42px;padding:0 12px;font-size:14px}
+.remove-btn{background:transparent;color:#b91c1c;border:1px solid #fecaca;padding:8px 11px;border-radius:12px}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.summary-card{padding:22px}
+.summary-content p{margin:0 0 10px}
+.summary-content .good{color:#166534;font-weight:700}
+.summary-content .warn{color:#92400e;font-weight:700}
+@media (max-width:820px){body{padding:14px}.hero,.summary-grid{grid-template-columns:1fr}h1{font-size:32px}.button-row{flex-direction:column}button{width:100%}}
