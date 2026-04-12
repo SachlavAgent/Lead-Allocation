@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daily Lead Allocator</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="container">
+    <section class="hero card">
+      <div>
+        <p class="eyebrow">Daily Lead Distribution</p>
+        <h1>Lead Allocator</h1>
+        <p class="subtext">Track lead allocation daily. Hours and lead counts change each day, and the system allocates fairly based on effort.</p>
+      </div>
+      <div class="hero-actions">
+        <label for="allocationDate">Date</label>
+        <input id="allocationDate" type="date" />
+        <label for="totalLeads">Total Leads</label>
+        <input id="totalLeads" type="number" min="0" step="1" value="21" />
+      </div>
+    </section>
+
+    <section class="controls card">
+      <div class="button-row">
+        <button id="addRowBtn" type="button">Add Sales Person</button>
+        <button id="calculateBtn" type="button">Calculate & Save Day</button>
+        <button id="resetBtn" type="button" class="secondary">Reset to Sample Data</button>
+        <button id="downloadBtn" type="button" class="secondary">Download All History</button>
+      </div>
+      <p class="note">Edit names and hours directly in the table below.</p>
+    </section>
+
+    <section class="table-card card">
+      <h2>Today's Allocation</h2>
+      <div class="table-wrap">
+        <table id="allocatorTable">
+          <thead>
+            <tr>
+              <th>Name</th><th>Hours</th><th>Raw Leads</th><th>Base Leads</th><th>Remainder</th><th>Extra Lead</th><th>Final Leads</th><th>Remove</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+          <tfoot>
+            <tr>
+              <td><strong>Totals</strong></td>
+              <td id="totalHours">0</td>
+              <td>—</td>
+              <td id="baseTotal">0</td>
+              <td>—</td>
+              <td id="extraTotal">0</td>
+              <td id="finalTotal">0</td>
+              <td>—</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </section>
+
+    <section class="summary-grid">
+      <div class="card summary-card">
+        <h2>Summary</h2>
+        <div id="summaryContent" class="summary-content"></div>
+      </div>
+      <div class="card summary-card">
+        <h2>How it works</h2>
+        <ol>
+          <li>Total hours are summed.</li>
+          <li>Each person gets a proportional share of total leads.</li>
+          <li>Base leads are rounded down.</li>
+          <li>Remaining leads go to the largest fractional remainders.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top: 28px;">
+      <h2>Historical Allocations</h2>
+      <div id="historyControls" style="margin-bottom: 16px;">
+        <input id="historySearch" type="text" placeholder="Search by name or date..." style="width: 100%; max-width: 300px; height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: 12px; font-size: 14px;" />
+      </div>
+      <div class="table-wrap">
+        <table id="historyTable">
+          <thead>
+            <tr>
+              <th>Date</th><th>Name</th><th>Hours</th><th>Final Leads</th><th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <template id="rowTemplate">
+    <tr>
+      <td><input type="text" class="name-input" placeholder="Name" /></td>
+      <td><input type="number" class="hours-input" min="0" step="0.5" placeholder="0" /></td>
+      <td class="raw-leads">0.00</td>
+      <td class="base-leads">0</td>
+      <td class="remainder">0.00</td>
+      <td class="extra-lead">0</td>
+      <td class="final-leads">0</td>
+      <td><button type="button" class="remove-btn" aria-label="Remove row">✕</button></td>
+    </tr>
+  </template>
+
+  <script src="script.js"></script>
+</body>
+</html>
