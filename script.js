@@ -1,4 +1,4 @@
-const sampleData=[{name:'Liron',hours:8},{name:'Yehudit',hours:5.5},{name:'Dan',hours:9},{name:'Gilad',hours:8},{name:'Viola',hours:6},{name:'Igor',hours:6},{name:'Amit',hours:3.5},{name:'David',hours:6}];
+const sampleData=[{name:'Liron Lea Asulin',hours:8},{name:'Yudit Yulia Sharabi',hours:5.5},{name:'dan',hours:9},{name:'Gilad Shabtai',hours:8},{name:'Viola Fae Fule',hours:6},{name:'Yegor Cherov',hours:6},{name:'Amit Givon',hours:3.5},{name:'David Attais',hours:6}];
 const tableBody=document.getElementById('tableBody');
 const rowTemplate=document.getElementById('rowTemplate');
 const totalLeadsInput=document.getElementById('totalLeads');
