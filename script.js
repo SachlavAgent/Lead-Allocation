@@ -20,8 +20,24 @@ function setTodayDate(){
  allocationDateInput.value=today;
 }
 
+// Get the most recent saved day's people with their hours
+function getLastSavedHours(){
+ const history=JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');
+ if(history.length===0) return null;
+ // Sort by date descending and get the latest date
+ history.sort((a,b)=>new Date(b.date)-new Date(a.date));
+ const latestDate=history[0].date;
+ // Get all entries for that date
+ const latestEntries=history.filter(e=>e.date===latestDate);
+ return latestEntries.map(e=>({name:e.name,hours:e.hours}));
+}
+
 // Initialize
 setTodayDate();
+
+// Reset total leads to 0 on every page load
+totalLeadsInput.value=0;
+
 document.getElementById('addRowBtn').addEventListener('click',()=>addRow({name:'',hours:''}));
 document.getElementById('calculateBtn').addEventListener('click',saveDay);
 document.getElementById('resetBtn').addEventListener('click',resetToSampleData);
@@ -183,5 +199,13 @@ function downloadAllHistory(){
  URL.revokeObjectURL(url);
 }
 
-resetToSampleData();
+// On load: use last saved hours if available, otherwise fall back to sample data
+const lastHours=getLastSavedHours();
+if(lastHours && lastHours.length>0){
+ tableBody.innerHTML='';
+ lastHours.forEach(addRow);
+ calculateAllocation();
+} else {
+ resetToSampleData();
+}
 renderHistory();
