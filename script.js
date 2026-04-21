@@ -67,11 +67,15 @@ function injectClickUpUI(){
   document.getElementById('saveApiKeyBtn').addEventListener('click',saveApiKey);
   document.getElementById('clickupAllocateBtn').addEventListener('click',runClickUpAllocation);
 
-  // Load saved key
+  // Load saved key and show clear status indicator
   const saved=localStorage.getItem(API_KEY_STORAGE);
   if(saved){
     document.getElementById('clickupApiKey').value=saved;
-    document.getElementById('apiKeyStatus').textContent='✓ Key loaded from storage';
+    document.getElementById('apiKeyStatus').textContent='✓ API key found — ready to use';
+    document.getElementById('apiKeyStatus').style.color='#22c55e';
+  } else {
+    document.getElementById('apiKeyStatus').textContent='⚠ No API key saved — paste your key and click Save';
+    document.getElementById('apiKeyStatus').style.color='#f59e0b';
   }
 }
 
@@ -79,7 +83,9 @@ function saveApiKey(){
   const key=document.getElementById('clickupApiKey').value.trim();
   if(!key){alert('Please enter your ClickUp API key.');return;}
   localStorage.setItem(API_KEY_STORAGE,key);
-  document.getElementById('apiKeyStatus').textContent='✓ Key saved!';
+  const s=document.getElementById('apiKeyStatus');
+  s.textContent='✓ API key saved — ready to use';
+  s.style.color='#22c55e';
 }
 
 function getApiKey(){
