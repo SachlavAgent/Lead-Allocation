@@ -55,10 +55,13 @@ function injectClickUpUI(){
     <div id="clickupLog" style="margin-top:14px;font-size:13px;line-height:1.7;max-height:220px;overflow-y:auto;"></div>
   `;
 
-  // Insert before the history section (last card)
+  // Insert API key bar before the history section (last card)
   const historySec=document.querySelector('section.card:last-of-type');
   historySec.parentNode.insertBefore(apiBar,historySec);
-  historySec.parentNode.insertBefore(allocBar,historySec);
+
+  // Insert allocate button before the summary-grid section
+  const summarySec=document.querySelector('section.summary-grid');
+  summarySec.parentNode.insertBefore(allocBar,summarySec);
 
   // Wire up events
   document.getElementById('saveApiKeyBtn').addEventListener('click',saveApiKey);
