@@ -28,22 +28,14 @@ const historyBody=document.getElementById('historyBody');
 const historySearch=document.getElementById('historySearch');
 
 const HISTORY_KEY='leadAllocatorHistory';
-const API_KEY_STORAGE='clickupApiKey';
 
-// ── Inject ClickUp UI into the page ─────────────────────────────
+// ── OAuth token helper ───────────────────────────────────────────
+function getApiKey(){
+  return localStorage.getItem('clickup_oauth_token') || '';
+}
+
+// ── Inject allocate button + status into the page ────────────────
 function injectClickUpUI(){
-  // API key bar
-  const apiBar=document.createElement('section');
-  apiBar.className='card';
-  apiBar.style.cssText='margin-top:28px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;';
-  apiBar.innerHTML=`
-    <label for="clickupApiKey" style="font-weight:600;white-space:nowrap;">ClickUp API Key</label>
-    <input id="clickupApiKey" type="password" placeholder="pk_••••••••••••••••••••••" style="flex:1;min-width:220px;height:40px;padding:0 12px;border:1px solid var(--border);border-radius:12px;font-size:14px;" />
-    <button id="saveApiKeyBtn" type="button">Save Key</button>
-    <span id="apiKeyStatus" style="font-size:13px;color:var(--muted);"></span>
-  `;
-
-  // Allocate button + status
   const allocBar=document.createElement('section');
   allocBar.className='card';
   allocBar.style.cssText='margin-top:16px;';
@@ -55,41 +47,11 @@ function injectClickUpUI(){
     <div id="clickupLog" style="margin-top:14px;font-size:13px;line-height:1.7;max-height:220px;overflow-y:auto;"></div>
   `;
 
-  // Insert API key bar before the history section (last card)
-  const historySec=document.querySelector('section.card:last-of-type');
-  historySec.parentNode.insertBefore(apiBar,historySec);
-
   // Insert allocate button before the summary-grid section
   const summarySec=document.querySelector('section.summary-grid');
   summarySec.parentNode.insertBefore(allocBar,summarySec);
 
-  // Wire up events
-  document.getElementById('saveApiKeyBtn').addEventListener('click',saveApiKey);
-  document.getElementById('clickupAllocateBtn').addEventListener('click',runClickUpAllocation);
-
-  // Load saved key and show clear status indicator
-  const saved=localStorage.getItem(API_KEY_STORAGE);
-  if(saved){
-    document.getElementById('clickupApiKey').value=saved;
-    document.getElementById('apiKeyStatus').textContent='✓ API key found — ready to use';
-    document.getElementById('apiKeyStatus').style.color='#22c55e';
-  } else {
-    document.getElementById('apiKeyStatus').textContent='⚠ No API key saved — paste your key and click Save';
-    document.getElementById('apiKeyStatus').style.color='#f59e0b';
-  }
-}
-
-function saveApiKey(){
-  const key=document.getElementById('clickupApiKey').value.trim();
-  if(!key){alert('Please enter your ClickUp API key.');return;}
-  localStorage.setItem(API_KEY_STORAGE,key);
-  const s=document.getElementById('apiKeyStatus');
-  s.textContent='✓ API key saved — ready to use';
-  s.style.color='#22c55e';
-}
-
-function getApiKey(){
-  return (document.getElementById('clickupApiKey').value.trim()) || localStorage.getItem(API_KEY_STORAGE)||'';
+  document.getElementById('clickupAllocateBtn').addEventListener('click', runClickUpAllocation);
 }
 
 // ── ClickUp API helpers ──────────────────────────────────────────
@@ -100,6 +62,12 @@ async function fetchUnassignedLeads(apiKey){
     while(true){
       const url=`https://api.clickup.com/api/v2/list/${listId}/task?page=${page}&include_closed=false`;
       const res=await fetch(url,{headers:{'Authorization':apiKey,'Content-Type':'application/json'}});
+      if(res.status===401){
+        localStorage.removeItem('clickup_oauth_token');
+        // Update connect button state if function exists
+        if(typeof updateConnectButton === 'function') updateConnectButton();
+        throw new Error('ClickUp session expired. Please reconnect using the Connect ClickUp button.');
+      }
       if(!res.ok) throw new Error(`ClickUp API error for list ${listId}: ${res.status} ${res.statusText}`);
       const data=await res.json();
       const tasks=data.tasks||[];
@@ -127,7 +95,10 @@ async function assignTask(apiKey,taskId,userId){
 // ── Main allocation runner ───────────────────────────────────────
 async function runClickUpAllocation(){
   const apiKey=getApiKey();
-  if(!apiKey){alert('Please enter and save your ClickUp API key first.');return;}
+  if(!apiKey){
+    alert('Please connect your ClickUp account first using the Connect ClickUp button.');
+    return;
+  }
 
   const statusEl=document.getElementById('clickupStatus');
   const logEl=document.getElementById('clickupLog');
