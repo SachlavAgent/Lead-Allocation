@@ -1,37 +1,95 @@
 // ClickUp API Integration
+// Updated to use OAuth token instead of personal API key.
+
 const CLICKUP_API_BASE = 'https://api.clickup.com/api/v2';
 
-async function getClickUpApiKey() {
-  try {
-    const response = await fetch('/.github/workflows/get-secret.js');
-    if (response.ok) {
-      return await response.text();
-    }
-  } catch (e) {
-    console.log('Using environment variable for API key');
-  }
-  return localStorage.getItem('clickupApiKey');
+// Your ClickUp Custom App client ID (the SAME app you created for the mobile app)
+// This is safe to have in frontend code.
+const CLICKUP_CLIENT_ID = 'R6XIXNRA9367UQK6LBGWGT1OFH50UP4J';
+const CLICKUP_REDIRECT_URI = 'https://sachlavagent.github.io/Lead-Allocation/callback.html';
+
+// ── Auth helpers ──────────────────────────────────────────────────────────────
+
+function getOAuthToken() {
+  return localStorage.getItem('clickup_oauth_token');
 }
 
-async function fetchUnassignedLeads() {
-  const apiKey = await getClickUpApiKey();
-  if (!apiKey) {
-    alert('ClickUp API key not configured. Please add it to GitHub Secrets.');
-    return [];
+function isConnected() {
+  return !!getOAuthToken();
+}
+
+function connectClickUp() {
+  const authUrl =
+    `https://app.clickup.com/api?client_id=${CLICKUP_CLIENT_ID}` +
+    `&redirect_uri=${encodeURIComponent(CLICKUP_REDIRECT_URI)}`;
+  window.location.href = authUrl;
+}
+
+function disconnectClickUp() {
+  localStorage.removeItem('clickup_oauth_token');
+  updateConnectButton();
+}
+
+function updateConnectButton() {
+  const btn = document.getElementById('connectClickUpBtn');
+  if (!btn) return;
+  if (isConnected()) {
+    btn.textContent = '✓ ClickUp Connected';
+    btn.style.backgroundColor = '#22c55e';
+    btn.onclick = () => {
+      if (confirm('Disconnect ClickUp?')) disconnectClickUp();
+    };
+  } else {
+    btn.textContent = 'Connect ClickUp';
+    btn.style.backgroundColor = '';
+    btn.onclick = connectClickUp;
+  }
+}
+
+// Run on page load
+document.addEventListener('DOMContentLoaded', updateConnectButton);
+
+// ── API call helper ───────────────────────────────────────────────────────────
+
+async function clickupFetch(path, options = {}) {
+  const token = getOAuthToken();
+  if (!token) {
+    alert('Please connect your ClickUp account first.');
+    return null;
   }
 
-  try {
-    const response = await fetch(
-      `${CLICKUP_API_BASE}/list/${CLICKUP_CONFIG.listId}/task?assignee=0&include_subtasks=false`,
-      {
-        headers: { 'Authorization': apiKey }
-      }
-    );
+  const response = await fetch(`${CLICKUP_API_BASE}${path}`, {
+    ...options,
+    headers: {
+      'Authorization': token,
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    },
+  });
 
-    if (!response.ok) throw new Error(`API Error: ${response.status}`);
-    
-    const data = await response.json();
-    return data.tasks || [];
+  if (response.status === 401) {
+    // Token expired — clear it and prompt reconnect
+    localStorage.removeItem('clickup_oauth_token');
+    updateConnectButton();
+    alert('ClickUp session expired. Please reconnect.');
+    return null;
+  }
+
+  if (!response.ok) {
+    throw new Error(`ClickUp API error: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+// ── Existing functions (updated to use OAuth) ─────────────────────────────────
+
+async function fetchUnassignedLeads() {
+  try {
+    const data = await clickupFetch(
+      `/list/${CLICKUP_CONFIG.listId}/task?assignee=0&include_subtasks=false`
+    );
+    return data ? (data.tasks || []) : [];
   } catch (error) {
     console.error('Error fetching unassigned leads:', error);
     alert('Failed to fetch unassigned leads from ClickUp');
@@ -40,26 +98,15 @@ async function fetchUnassignedLeads() {
 }
 
 async function assignLeadsToSalesperson(taskIds, userId) {
-  const apiKey = await getClickUpApiKey();
-  if (!apiKey) return false;
-
   try {
     for (const taskId of taskIds) {
-      const response = await fetch(
-        `${CLICKUP_API_BASE}/task/${taskId}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Authorization': apiKey,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            assignees: [{ id: parseInt(userId) }]
-          })
-        }
-      );
-
-      if (!response.ok) throw new Error(`Failed to assign task ${taskId}`);
+      const result = await clickupFetch(`/task/${taskId}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          assignees: [{ id: parseInt(userId) }]
+        }),
+      });
+      if (!result) return false;
     }
     return true;
   } catch (error) {
@@ -75,22 +122,26 @@ async function syncToClickUp() {
     return;
   }
 
+  if (!isConnected()) {
+    alert('Please connect your ClickUp account first.');
+    connectClickUp();
+    return;
+  }
+
   const rows = calculateAllocation();
   if (rows.length === 0) {
     alert('Please add salespeople and calculate allocation.');
     return;
   }
 
-  // Show loading state
   const syncBtn = document.getElementById('syncClickUpBtn');
   const originalText = syncBtn.textContent;
   syncBtn.disabled = true;
   syncBtn.textContent = 'Syncing...';
 
   try {
-    // Fetch unassigned leads
     const unassignedLeads = await fetchUnassignedLeads();
-    
+
     if (unassignedLeads.length === 0) {
       alert('No unassigned leads found in ClickUp.');
       return;
@@ -99,11 +150,9 @@ async function syncToClickUp() {
     let totalAssigned = 0;
     let leadsIndex = 0;
 
-    // Assign leads to each salesperson
     for (const person of rows) {
       if (person.final === 0 || !person.name.trim()) continue;
 
-      // Find the salesperson in config
       const salesPersonConfig = CLICKUP_CONFIG.salespeople.find(
         sp => sp.name.toLowerCase() === person.name.toLowerCase()
       );
@@ -113,7 +162,6 @@ async function syncToClickUp() {
         continue;
       }
 
-      // Get task IDs to assign
       const tasksToAssign = unassignedLeads
         .slice(leadsIndex, leadsIndex + person.final)
         .map(task => task.id);
@@ -123,9 +171,8 @@ async function syncToClickUp() {
         break;
       }
 
-      // Assign leads
       const success = await assignLeadsToSalesperson(tasksToAssign, salesPersonConfig.userId);
-      
+
       if (success) {
         totalAssigned += tasksToAssign.length;
         leadsIndex += tasksToAssign.length;
@@ -135,7 +182,7 @@ async function syncToClickUp() {
     }
 
     alert(`✓ Successfully assigned ${totalAssigned} leads to salespeople in ClickUp!`);
-    
+
   } catch (error) {
     console.error('Sync error:', error);
     alert(`Error syncing to ClickUp: ${error.message}`);
@@ -144,10 +191,3 @@ async function syncToClickUp() {
     syncBtn.textContent = originalText;
   }
 }
-
-// Store API key in localStorage (user can set this manually for now)
-function setClickUpApiKey(apiKey) {
-  localStorage.setItem('clickupApiKey', apiKey);
-  alert('ClickUp API key saved!');
-}
-assignLeadsToSalespeople();
