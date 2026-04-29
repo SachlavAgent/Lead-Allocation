@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Connecting ClickUp...</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background: #f5f5f5;
+    }
+    .box {
+      text-align: center;
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.1);
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #e0e0e0;
+      border-top-color: #7B68EE;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    p { color: #555; margin: 0; }
+    .error { color: #e53e3e; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="spinner" id="spinner"></div>
+    <p id="message">Connecting ClickUp...</p>
+  </div>
+
+  <script>
+    const VERCEL_TOKEN_URL = "https://project-ks6k6.vercel.app/api/clickup-auth-web";
+
+    async function handleCallback() {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
+      const error = params.get("error");
+
+      if (error || !code) {
+        showError(error || "No authorization code received.");
+        return;
+      }
+
+      try {
+        const response = await fetch(VERCEL_TOKEN_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.access_token) {
+          showError(data.error || "Token exchange failed.");
+          return;
+        }
+
+        // Save token and redirect back to the app
+        localStorage.setItem("clickup_oauth_token", data.access_token);
+        document.getElementById("message").textContent = "Connected! Redirecting...";
+        document.getElementById("spinner").style.borderTopColor = "#22c55e";
+        setTimeout(() => {
+          window.location.href = "/Lead-Allocation/";
+        }, 1000);
+
+      } catch (err) {
+        showError("Network error. Please try again.");
+      }
+    }
+
+    function showError(msg) {
+      document.getElementById("spinner").style.display = "none";
+      const p = document.getElementById("message");
+      p.textContent = "Error: " + msg;
+      p.className = "error";
+      setTimeout(() => {
+        window.location.href = "/Lead-Allocation/";
+      }, 3000);
+    }
+
+    handleCallback();
+  </script>
+</body>
+</html>
