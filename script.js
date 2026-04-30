@@ -17,7 +17,7 @@ const SALESPERSON_MAP = {
 // Proxy base URL — all ClickUp API calls go through Render to avoid CORS
 const PROXY_BASE = 'https://clickup-auth-proxy.onrender.com/clickup-api';
 
-const sampleData=[{name:'Liron',hours:8},{name:'Yehudit',hours:5.5},{name:'Dan',hours:9},{name:'Gilad',hours:8},{name:'Viola',hours:6},{name:'Igor',hours:6},{name:'Amit',hours:3.5},{name:'David',hours:6}];
+const sampleData=[{name:'Liron',hours:8},{name:'Yehudit',hours:5.5},{name:'Dan',hours:9},{name:'Gilad',hours:8},{name:'Viola',hours:6},{name:'Yegor',hours:6},{name:'Amit',hours:3.5},{name:'David',hours:6}];
 const tableBody=document.getElementById('tableBody');
 const rowTemplate=document.getElementById('rowTemplate');
 const totalLeadsInput=document.getElementById('totalLeads');
