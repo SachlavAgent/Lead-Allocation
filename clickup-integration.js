@@ -1,7 +1,6 @@
-// ClickUp API Integration
-// Uses OAuth via Render backend — no personal API key needed.
-
-const CLICKUP_API_BASE = 'https://api.clickup.com/api/v2';
+// ClickUp OAuth Integration
+// Handles ONLY the Connect ClickUp button and OAuth token storage.
+// All API fetching is handled by script.js
 
 // Lead Allocator ClickUp Custom App client ID (safe to expose)
 const CLICKUP_CLIENT_ID = 'GXLOAPT91242XUNR8ODIXZBATBNS4RXC';
@@ -77,14 +76,3 @@ document.addEventListener('DOMContentLoaded', () => {
   checkForTokenInUrl();
   updateConnectButton();
 });
-
-// ── API call helper ───────────────────────────────────────────────────────────
-
-async function clickupFetch(path, options = {}) {
-  const token = getOAuthToken();
-  if (!token) {
-    alert('Please connect your ClickUp account first.');
-    return null;
-  }
-
- 
