@@ -5,7 +5,7 @@ const CLICKUP_STATUSES = ['red hot', 'no response to offer'];
 const SALESPERSON_MAP = {
   'Amit':    '107574161',
   'Viola':   '107574160',
-  'Igor':    '107540368',
+  'Yegor':    '107540368',
   'Yehudit': '107540366',
   'Gilad':   '107540365',
   'Dan':     '107540364',
@@ -13,6 +13,9 @@ const SALESPERSON_MAP = {
   'David':   '107540359',
 };
 // ────────────────────────────────────────────────────────────────
+
+// Proxy base URL — all ClickUp API calls go through Render to avoid CORS
+const PROXY_BASE = 'https://clickup-auth-proxy.onrender.com/clickup-api';
 
 const sampleData=[{name:'Liron',hours:8},{name:'Yehudit',hours:5.5},{name:'Dan',hours:9},{name:'Gilad',hours:8},{name:'Viola',hours:6},{name:'Igor',hours:6},{name:'Amit',hours:3.5},{name:'David',hours:6}];
 const tableBody=document.getElementById('tableBody');
@@ -47,29 +50,44 @@ function injectClickUpUI(){
     <div id="clickupLog" style="margin-top:14px;font-size:13px;line-height:1.7;max-height:220px;overflow-y:auto;"></div>
   `;
 
-  // Insert allocate button before the summary-grid section
   const summarySec=document.querySelector('section.summary-grid');
   summarySec.parentNode.insertBefore(allocBar,summarySec);
 
   document.getElementById('clickupAllocateBtn').addEventListener('click', runClickUpAllocation);
 }
 
-// ── ClickUp API helpers ──────────────────────────────────────────
+// ── ClickUp API helpers (via proxy) ─────────────────────────────
+async function proxyFetch(path, options = {}) {
+  const token = getApiKey();
+  if (!token) throw new Error('Not connected to ClickUp');
+
+  const response = await fetch(`${PROXY_BASE}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      'x-clickup-token': token,
+      ...(options.headers || {}),
+    },
+  });
+
+  if (response.status === 401) {
+    localStorage.removeItem('clickup_oauth_token');
+    if (typeof updateConnectButton === 'function') updateConnectButton();
+    throw new Error('ClickUp session expired. Please reconnect using the Connect ClickUp button.');
+  }
+
+  if (!response.ok) throw new Error(`ClickUp API error: ${response.status} ${response.statusText}`);
+  return response.json();
+}
+
 async function fetchUnassignedLeads(apiKey){
   const leads=[];
   for(const listId of CLICKUP_LIST_IDS){
     let page=0;
     while(true){
-      const url=`https://api.clickup.com/api/v2/list/${listId}/task?page=${page}&include_closed=false`;
-      const res=await fetch(url,{headers:{'Authorization':apiKey,'Content-Type':'application/json'}});
-      if(res.status===401){
-        localStorage.removeItem('clickup_oauth_token');
-        // Update connect button state if function exists
-        if(typeof updateConnectButton === 'function') updateConnectButton();
-        throw new Error('ClickUp session expired. Please reconnect using the Connect ClickUp button.');
-      }
-      if(!res.ok) throw new Error(`ClickUp API error for list ${listId}: ${res.status} ${res.statusText}`);
-      const data=await res.json();
+      const data = await proxyFetch(
+        `/list/${listId}/task?page=${page}&include_closed=false`
+      );
       const tasks=data.tasks||[];
       tasks.forEach(task=>{
         const statusMatch=CLICKUP_STATUSES.includes((task.status?.status||'').toLowerCase().trim());
@@ -84,21 +102,16 @@ async function fetchUnassignedLeads(apiKey){
 }
 
 async function assignTask(apiKey,taskId,userId){
-  const res=await fetch(`https://api.clickup.com/api/v2/task/${taskId}`,{
-    method:'PUT',
-    headers:{'Authorization':apiKey,'Content-Type':'application/json'},
-    body:JSON.stringify({assignees:{add:[parseInt(userId,10)]}}),
+  await proxyFetch(`/task/${taskId}`, {
+    method: 'PUT',
+    body: JSON.stringify({assignees:{add:[parseInt(userId,10)]}}),
   });
-  if(!res.ok) throw new Error(`Failed to assign task ${taskId}: ${res.status}`);
 }
 
 // ── Main allocation runner ───────────────────────────────────────
 async function runClickUpAllocation(){
   const apiKey=getApiKey();
-  if(!apiKey){
-    alert('Please connect your ClickUp account first using the Connect ClickUp button.');
-    return;
-  }
+  if(!apiKey){alert('Please connect your ClickUp account first using the Connect ClickUp button.');return;}
 
   const statusEl=document.getElementById('clickupStatus');
   const logEl=document.getElementById('clickupLog');
@@ -109,7 +122,6 @@ async function runClickUpAllocation(){
   statusEl.textContent='Fetching unassigned leads…';
 
   try{
-    // 1. Fetch leads
     const leads=await fetchUnassignedLeads(apiKey);
     if(leads.length===0){
       statusEl.textContent='';
@@ -120,12 +132,10 @@ async function runClickUpAllocation(){
 
     log(logEl,`Found <strong>${leads.length}</strong> unassigned lead(s). Calculating allocation…`);
 
-    // 2. Auto-set total leads to match what was found, then recalculate
     totalLeadsInput.value=leads.length;
     const rows=calculateAllocation();
     if(!rows){throw new Error('Could not calculate allocation. Check that hours are entered.');}
 
-    // 3. Build assignment queue: repeat each name finalLeads times
     const queue=[];
     rows.forEach(p=>{
       if(p.final>0 && SALESPERSON_MAP[p.name]){
@@ -135,10 +145,8 @@ async function runClickUpAllocation(){
 
     if(queue.length===0){throw new Error('No salespeople matched. Check names match: '+Object.keys(SALESPERSON_MAP).join(', '));}
 
-    // 4. Shuffle leads so assignment isn't always top-of-list biased
     const shuffled=leads.sort(()=>Math.random()-0.5);
 
-    // 5. Assign leads — cycle through queue if more leads than queue slots
     let assigned=0;
     const breakdown={};
     for(let i=0;i<shuffled.length;i++){
@@ -149,7 +157,6 @@ async function runClickUpAllocation(){
       statusEl.textContent=`Assigning… ${assigned}/${shuffled.length}`;
     }
 
-    // 6. Log results
     log(logEl,`<strong>✓ Done! ${assigned} lead(s) assigned.</strong>`);
     Object.entries(breakdown).sort((a,b)=>b[1]-a[1]).forEach(([name,count])=>{
       log(logEl,`&nbsp;&nbsp;• ${name}: ${count} lead(s)`);
